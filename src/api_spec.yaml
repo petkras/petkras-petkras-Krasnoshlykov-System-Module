@@ -1,0 +1,223 @@
+openapi: 3.0.3
+info:
+  title: Krasnoshlykov-System-Module — Integration Gateway API
+  description: |
+    JSON-RPC 2.0 шлюз между Python-клиентом и сервером 1С Предприятие.
+    Все методы вызываются через единый POST-эндпоинт `/rpc`.
+    Транспорт — TCP Socket; данная спецификация описывает прикладной уровень.
+  version: 1.0.0
+  contact:
+    name: Красношлыков П.А., группа 5ИТб-2
+
+servers:
+  - url: http://{host}:{port}/rpc
+    description: Интеграционный шлюз
+    variables:
+      host:
+        default: 192.168.1.1
+      port:
+        default: "8080"
+
+paths:
+  /rpc:
+    post:
+      summary: Единый эндпоинт JSON-RPC 2.0
+      description: Принимает запрос, маршрутизирует его к соответствующему методу шлюза.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JsonRpcRequest"
+            examples:
+              ping:
+                summary: Health Check
+                value:
+                  jsonrpc: "2.0"
+                  method: ping
+                  id: 1
+              bulk_upload:
+                summary: Массовая загрузка
+                value:
+                  jsonrpc: "2.0"
+                  method: bulk_upload
+                  params:
+                    items: [101, 102, 103]
+                    metadata:
+                      type: internal
+                      priority: high
+                  id: 42
+      responses:
+        "200":
+          description: Успешный ответ JSON-RPC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRpcResponse"
+        "403":
+          description: Запрещено политикой RBAC
+        "404":
+          description: Метод не найден
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    JsonRpcRequest:
+      type: object
+      required: [jsonrpc, method, id]
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        method:
+          type: string
+          description: Имя вызываемого метода шлюза
+          enum:
+            - ping
+            - status
+            - get_data
+            - bulk_upload
+            - list_contractors
+            - query_1c
+            - delete_all
+        params:
+          oneOf:
+            - type: object
+            - type: array
+          description: Параметры метода (структурированные или позиционные)
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+
+    JsonRpcResponse:
+      type: object
+      required: [jsonrpc, id]
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        result:
+          type: object
+          nullable: true
+          description: Результат успешного вызова. Отсутствует при ошибке.
+        error:
+          allOf:
+            - $ref: "#/components/schemas/JsonRpcError"
+          nullable: true
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+
+    JsonRpcError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: Код ошибки JSON-RPC 2.0
+          enum:
+            - -32700  # Parse error
+            - -32600  # Invalid Request
+            - -32601  # Method not found
+            - -32602  # Invalid params
+            - -32603  # Internal error
+            - -32000  # Server error: Timeout
+            - -32001  # Server error: Forbidden by RBAC
+            - -32002  # Server error: Prompt Injection detected
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
+        data:
+          type: object
+          description: Дополнительные сведения об ошибке
+
+x-methods:
+  - name: ping
+    summary: Health Check шлюза
+    params: {}
+    result:
+      type: string
+      example: pong
+
+  - name: status
+    summary: Получить агрегированный статус подключения и счётчики
+    params: {}
+    result:
+      type: object
+      properties:
+        connection: { type: string, example: ONLINE }
+        transactions_24h: { type: integer, example: 1254 }
+        errors_24h: { type: integer, example: 0 }
+
+  - name: get_data
+    summary: Извлечение данных из 1С с применением RLS
+    params:
+      type: object
+      properties:
+        entity: { type: string, example: contracts }
+        filters: { type: object }
+    result:
+      type: array
+      items:
+        type: object
+
+  - name: bulk_upload
+    summary: Массовая загрузка элементов в 1С одной транзакцией
+    params:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { type: integer }
+        metadata:
+          type: object
+          properties:
+            type: { type: string, enum: [internal, external] }
+            priority: { type: string, enum: [low, normal, high] }
+    result:
+      type: object
+      properties:
+        accepted: { type: integer }
+        rejected: { type: integer }
+
+  - name: list_contractors
+    summary: Список контрагентов, доступных пользователю по RBAC
+    params:
+      type: object
+      properties:
+        limit: { type: integer, default: 100 }
+        offset: { type: integer, default: 0 }
+    result:
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: string }
+          name: { type: string }
+          inn: { type: string }
+
+  - name: query_1c
+    summary: Произвольный запрос к 1С с обязательным RLS-фильтром
+    params:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        params: { type: object }
+    result:
+      type: object
+
+  - name: delete_all
+    summary: Запрещённый по умолчанию метод (демонстрация 403 Forbidden)
+    params: {}
+    result: null
