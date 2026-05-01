@@ -42,15 +42,15 @@
 
 1. **Главная панель мониторинга (Main Panel):** Дашборд состояния шлюза с виджетами активных Socket-соединений, счётчиками транзакций в реальном времени и индикаторами здоровья сервиса. Цветовое кодирование статусов (зелёный — норма, жёлтый — деградация, красный — отказ).
 
-     ![Search Bar](docs/ui_prototypes/screen_layout_2.jpg)
+     ![Search Bar](docs/ui_prototypes/screen_layout_2.png)
 
 2. **Настройки интеграции (Integration Settings):** Экран конфигурации параметров Socket-канала, JWT-ключей подписи, таймаутов и лимитов нагрузки. Раздельные блоки для боевого и тестового контуров с валидацией значений на стороне клиента.
 
-     ![Search Bar](docs/ui_prototypes/screen_layout_3.jpg)
+     ![Search Bar](docs/ui_prototypes/screen_layout_3.png)
 
 3. **Журнал транзакций (Transactions Log):** Табличное представление всех вызовов API с фильтрацией по методу, статусу и временному диапазону. Поддержка пагинации, сортировки и быстрого перехода к деталям отдельной транзакции.
 
-     ![Search Bar](docs/ui_prototypes/screen_layout_1.jpg)
+     ![Search Bar](docs/ui_prototypes/screen_layout_1.png)
 
 ---
 
